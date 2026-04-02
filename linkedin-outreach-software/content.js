@@ -1,13 +1,12 @@
 /**
  * LinkedIn Outreach Software — Content Script
- * Injected on LinkedIn pages to add the outreach badge, detect profiles/jobs,
- * and communicate with the sidebar/background.
+ * Injected on LinkedIn pages to detect profiles/jobs, add the outreach badge,
+ * scrape contact data, and relay everything to the sidebar.
  */
 
 (function () {
   'use strict';
 
-  // Prevent double-injection
   if (window.__LOS_INJECTED) return;
   window.__LOS_INJECTED = true;
 
@@ -18,41 +17,74 @@
   let currentJobData = null;
   let currentPageType = null;
   let badgeElement = null;
+  let lastUrl = location.href;
+  let retryCount = 0;
 
-  // ─── Initialization ────────────────────────
+  // ─── Init ─────────────────────────────────
 
   function init() {
-    console.log('[LOS] LinkedIn Outreach Software initialized');
-    observePageChanges();
+    console.log('[LOS] LinkedIn Outreach Software v1.0 initialized');
     processCurrentPage();
+    observePageChanges();
   }
 
-  // ─── Page Change Observer ──────────────────
+  // ─── Page Change Observer ─────────────────
 
   function observePageChanges() {
-    let lastUrl = location.href;
-
-    // URL change detection
-    const urlObserver = new MutationObserver(() => {
+    // Watch for URL changes (LinkedIn SPA)
+    setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
-        setTimeout(processCurrentPage, 800);
+        retryCount = 0;
+        setTimeout(() => processCurrentPage(), 600);
       }
-    });
+    }, 500);
 
-    urlObserver.observe(document.body, { childList: true, subtree: true });
+    // Also watch for DOM mutations (content loading after navigation)
+    const observer = new MutationObserver(debounce(() => {
+      const pageType = detectPageType();
+      if (pageType === 'profile' && (!currentProfileData || !currentProfileData.name)) {
+        processCurrentPage();
+      }
+      if (pageType === 'job' && (!currentJobData || !currentJobData.jobTitle)) {
+        processCurrentPage();
+      }
+    }, 1500));
 
-    // Also handle LinkedIn's SPA navigation
-    window.addEventListener('popstate', () => setTimeout(processCurrentPage, 500));
+    observer.observe(document.body, { childList: true, subtree: true });
   }
 
-  // ─── Page Processing ──────────────────────
+  // ─── Debounce ─────────────────────────────
+
+  function debounce(fn, delay) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), delay);
+    };
+  }
+
+  // ─── Page Type Detection ──────────────────
+
+  function detectPageType() {
+    const url = window.location.href;
+    if (url.match(/linkedin\.com\/in\/[^/]+/)) return 'profile';
+    if (url.includes('/jobs/view/') || url.match(/\/jobs\/collections\/.*currentJobId/)) return 'job';
+    if (url.includes('/company/')) return 'company';
+    if (url.includes('/search/results/people')) return 'search_people';
+    if (url.includes('/search/results/')) return 'search';
+    if (url.includes('/jobs/')) return 'jobs_list';
+    if (url.includes('/messaging/')) return 'messaging';
+    return 'other';
+  }
+
+  // ─── Process Current Page ─────────────────
 
   function processCurrentPage() {
-    const pageType = LOS.Utils.detectPageType();
+    const pageType = detectPageType();
     currentPageType = pageType;
+    console.log('[LOS] Processing page type:', pageType);
 
-    // Remove old badge if page changed
     removeBadge();
 
     switch (pageType) {
@@ -68,8 +100,6 @@
       case 'search_people':
         handlePeopleSearch();
         break;
-      default:
-        break;
     }
   }
 
@@ -77,27 +107,69 @@
 
   async function handleProfilePage() {
     try {
-      // Wait for profile content to load
-      await LOS.Utils.waitForElement('h1.text-heading-xlarge, [data-anonymize="person-name"], .artdeco-entity-lockup__title', 5000);
-      await new Promise(r => setTimeout(r, 500)); // Allow lazy content
+      // Wait for the profile name to load — try multiple selectors
+      const nameSelectors = [
+        'h1.text-heading-xlarge',
+        '.pv-text-details__left-panel h1',
+        '.top-card-layout__title',
+        'h1[tabindex="-1"]',
+        'main h1'
+      ];
+
+      let nameFound = false;
+      for (const sel of nameSelectors) {
+        try {
+          await waitForElement(sel, 3000);
+          nameFound = true;
+          break;
+        } catch { /* try next */ }
+      }
+
+      if (!nameFound && retryCount < 5) {
+        retryCount++;
+        console.log(`[LOS] Name not found, retry ${retryCount}/5 in 1s...`);
+        setTimeout(() => handleProfilePage(), 1000);
+        return;
+      }
+
+      // Give LinkedIn a moment to finish rendering dynamic content
+      await sleep(500);
 
       currentProfileData = ProfileScraper.extractProfile();
-      if (!currentProfileData.name) return;
+      console.log('[LOS] Extracted profile:', currentProfileData.name, '|', currentProfileData.company);
 
+      if (!currentProfileData.name) {
+        if (retryCount < 5) {
+          retryCount++;
+          setTimeout(() => handleProfilePage(), 1500);
+          return;
+        }
+        console.warn('[LOS] Could not extract profile name after retries');
+        return;
+      }
+
+      // Find contact info
       const contacts = ContactFinder.findContacts(currentProfileData);
       currentProfileData.foundEmails = contacts.emails;
       currentProfileData.foundPhones = contacts.phones;
 
+      console.log('[LOS] Found', contacts.emails.length, 'emails,', contacts.phones.length, 'phones');
+
+      // Show the outreach badge
       injectBadge('profile');
 
-      // Notify background script
+      // Notify background / sidebar
       chrome.runtime.sendMessage({
         type: 'PROFILE_DETECTED',
         data: currentProfileData
       }).catch(() => {});
 
     } catch (e) {
-      console.warn('[LOS] Profile page handling error:', e);
+      console.warn('[LOS] Profile handling error:', e);
+      if (retryCount < 5) {
+        retryCount++;
+        setTimeout(() => handleProfilePage(), 2000);
+      }
     }
   }
 
@@ -105,15 +177,37 @@
 
   async function handleJobPage() {
     try {
-      await LOS.Utils.waitForElement('.job-details-jobs-unified-top-card__job-title, .jobs-unified-top-card__job-title, h1.t-24', 5000);
-      await new Promise(r => setTimeout(r, 500));
+      const jobSelectors = [
+        '.job-details-jobs-unified-top-card__job-title',
+        '.jobs-unified-top-card__job-title',
+        'h1.t-24',
+        '.top-card-layout__title'
+      ];
 
+      let found = false;
+      for (const sel of jobSelectors) {
+        try {
+          await waitForElement(sel, 3000);
+          found = true;
+          break;
+        } catch { /* try next */ }
+      }
+
+      if (!found && retryCount < 3) {
+        retryCount++;
+        setTimeout(() => handleJobPage(), 1500);
+        return;
+      }
+
+      await sleep(500);
       currentJobData = ProfileScraper.extractJobListing();
+
       if (!currentJobData.jobTitle) return;
+
+      console.log('[LOS] Extracted job:', currentJobData.jobTitle, 'at', currentJobData.company);
 
       injectBadge('job');
 
-      // Inject recruiter quick-action button if recruiter found
       if (currentJobData.recruiter) {
         injectRecruiterButton();
       }
@@ -124,46 +218,14 @@
       }).catch(() => {});
 
     } catch (e) {
-      console.warn('[LOS] Job page handling error:', e);
+      console.warn('[LOS] Job handling error:', e);
     }
   }
 
   // ─── Jobs List Handler ────────────────────
 
   function handleJobsList() {
-    // Add subtle overlay buttons on job cards, re-run when list updates
-    const container = document.querySelector('.jobs-search-results-list, .scaffold-layout__list');
-    if (!container) return;
-
-    const observer = new MutationObserver(LOS.Utils.debounce(() => {
-      addJobCardButtons(container);
-    }, 500));
-
-    observer.observe(container, { childList: true, subtree: true });
-    addJobCardButtons(container);
-  }
-
-  function addJobCardButtons(container) {
-    const cards = container.querySelectorAll('.job-card-container, .jobs-search-results__list-item');
-    cards.forEach(card => {
-      if (card.querySelector(`.${RECRUITER_BTN_CLASS}`)) return;
-
-      const btn = document.createElement('button');
-      btn.className = RECRUITER_BTN_CLASS;
-      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>`;
-      btn.title = 'Draft outreach for this job';
-      btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        // Navigate to the job to extract details
-        const link = card.querySelector('a[href*="/jobs/view"]');
-        if (link) link.click();
-        setTimeout(() => openSidebar(), 1000);
-      });
-
-      card.style.position = 'relative';
-      card.appendChild(btn);
-    });
+    injectBadge('search');
   }
 
   // ─── People Search Handler ────────────────
@@ -182,21 +244,18 @@
     badgeElement.className = `los-badge los-badge-${type}`;
 
     const icon = type === 'job' ? '💼' : type === 'search' ? '🔍' : '🚀';
-    const label = type === 'job' ? 'Outreach' : type === 'search' ? 'Outreach' : 'Outreach';
 
     badgeElement.innerHTML = `
       <div class="los-badge-inner">
         <span class="los-badge-icon">${icon}</span>
-        <span class="los-badge-label">${label}</span>
+        <span class="los-badge-label">Outreach</span>
         <span class="los-badge-pulse"></span>
       </div>
     `;
 
     badgeElement.addEventListener('click', openSidebar);
-
     document.body.appendChild(badgeElement);
 
-    // Animation
     requestAnimationFrame(() => {
       badgeElement.classList.add('los-badge-visible');
     });
@@ -211,28 +270,34 @@
     badgeElement = null;
   }
 
-  // ─── Recruiter Button Injection ───────────
+  // ─── Recruiter Button ─────────────────────
 
   function injectRecruiterButton() {
-    const recruiterSection = document.querySelector('.hirer-card__hirer-information, .jobs-poster');
-    if (!recruiterSection || recruiterSection.querySelector(`.${RECRUITER_BTN_CLASS}`)) return;
+    const sections = document.querySelectorAll(
+      '.hirer-card__hirer-information, .jobs-poster__header, .jobs-poster, .hiring-team-card'
+    );
 
-    const btn = document.createElement('button');
-    btn.className = `${RECRUITER_BTN_CLASS} los-recruiter-inline`;
-    btn.innerHTML = `
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-      <span>Draft Outreach</span>
-    `;
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      openSidebar();
+    sections.forEach(section => {
+      if (section.querySelector(`.${RECRUITER_BTN_CLASS}`)) return;
+
+      const btn = document.createElement('button');
+      btn.className = `${RECRUITER_BTN_CLASS} los-recruiter-inline`;
+      btn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+        <span>Draft Outreach</span>
+      `;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        openSidebar();
+      });
+
+      section.style.position = 'relative';
+      section.appendChild(btn);
     });
-
-    recruiterSection.style.position = 'relative';
-    recruiterSection.appendChild(btn);
   }
 
-  // ─── Sidebar Communication ────────────────
+  // ─── Sidebar ──────────────────────────────
 
   function openSidebar() {
     chrome.runtime.sendMessage({
@@ -250,38 +315,83 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case 'GET_PAGE_DATA':
+        // If no data yet, try extracting now
+        if (!currentProfileData && !currentJobData) {
+          const pt = detectPageType();
+          if (pt === 'profile') {
+            currentProfileData = ProfileScraper.extractProfile();
+            if (currentProfileData.name) {
+              const contacts = ContactFinder.findContacts(currentProfileData);
+              currentProfileData.foundEmails = contacts.emails;
+              currentProfileData.foundPhones = contacts.phones;
+            }
+          } else if (pt === 'job') {
+            currentJobData = ProfileScraper.extractJobListing();
+          }
+        }
+
         sendResponse({
-          pageType: currentPageType,
+          pageType: currentPageType || detectPageType(),
           profile: currentProfileData,
           job: currentJobData
         });
         break;
 
       case 'REFRESH_DATA':
+        retryCount = 0;
+        currentProfileData = null;
+        currentJobData = null;
         processCurrentPage();
         sendResponse({ ok: true });
         break;
 
       case 'EXTRACT_PROFILE':
         currentProfileData = ProfileScraper.extractProfile();
-        const contacts = ContactFinder.findContacts(currentProfileData);
-        currentProfileData.foundEmails = contacts.emails;
-        currentProfileData.foundPhones = contacts.phones;
+        if (currentProfileData.name) {
+          const contacts = ContactFinder.findContacts(currentProfileData);
+          currentProfileData.foundEmails = contacts.emails;
+          currentProfileData.foundPhones = contacts.phones;
+        }
         sendResponse(currentProfileData);
         break;
-
-      default:
-        break;
     }
-    return true; // Keep channel open for async
+    return true;
   });
+
+  // ─── Helpers ──────────────────────────────
+
+  function waitForElement(selector, timeout = 5000) {
+    return new Promise((resolve, reject) => {
+      const el = document.querySelector(selector);
+      if (el) return resolve(el);
+
+      const observer = new MutationObserver((_, obs) => {
+        const el = document.querySelector(selector);
+        if (el) {
+          obs.disconnect();
+          resolve(el);
+        }
+      });
+
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      setTimeout(() => {
+        observer.disconnect();
+        reject(new Error(`Timeout: ${selector}`));
+      }, timeout);
+    });
+  }
+
+  function sleep(ms) {
+    return new Promise(r => setTimeout(r, ms));
+  }
 
   // ─── Start ────────────────────────────────
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', () => setTimeout(init, 500));
   } else {
-    init();
+    setTimeout(init, 500);
   }
 
 })();

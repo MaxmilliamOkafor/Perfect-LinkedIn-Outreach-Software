@@ -33,9 +33,19 @@
     setupTabs();
     setupTemplateGrid();
     setupEventListeners();
-    requestPageData();
     loadLeads();
     listenForUpdates();
+    // Request page data with retries (content script may still be loading)
+    requestPageDataWithRetry(0);
+  }
+
+  function requestPageDataWithRetry(attempt) {
+    requestPageData().then(gotData => {
+      if (!gotData && attempt < 6) {
+        console.log(`[LOS Sidebar] No data yet, retry ${attempt + 1}/6...`);
+        setTimeout(() => requestPageDataWithRetry(attempt + 1), 1500);
+      }
+    });
   }
 
   // ─── Settings ─────────────────────────────
@@ -151,8 +161,15 @@
     $('#btn-close-settings')?.addEventListener('click', closeSettings);
     $('#btn-save-settings')?.addEventListener('click', saveSettings);
 
-    // Refresh
-    $('#btn-refresh')?.addEventListener('click', () => requestPageData());
+    // Refresh — tell content script to re-extract, then fetch
+    $('#btn-refresh')?.addEventListener('click', async () => {
+      const tabs = await chrome.tabs.query({ url: '*://*.linkedin.com/*' });
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, { type: 'REFRESH_DATA' }, () => {
+          setTimeout(() => requestPageDataWithRetry(0), 1000);
+        });
+      }
+    });
 
     // Export CSV
     $('#btn-export')?.addEventListener('click', exportLeads);
@@ -164,16 +181,47 @@
   // ─── Page Data ────────────────────────────
   async function requestPageData() {
     try {
-      const data = await sendMessage('GET_PAGE_DATA');
-      if (data) {
-        currentPageType = data.pageType;
-        currentProfile = data.profile;
-        currentJob = data.job;
-        renderPageData();
+      // Query the active LinkedIn tab directly
+      const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+      const tab = tabs.find(t => t.url && t.url.includes('linkedin.com'));
+
+      if (!tab) {
+        // Try all LinkedIn tabs
+        const allTabs = await chrome.tabs.query({ url: '*://*.linkedin.com/*' });
+        if (allTabs.length > 0) {
+          return await queryTab(allTabs[0]);
+        }
+        console.log('[LOS Sidebar] No LinkedIn tab found');
+        return false;
       }
+
+      return await queryTab(tab);
     } catch (e) {
       console.warn('[LOS Sidebar] Failed to get page data:', e);
+      return false;
     }
+  }
+
+  async function queryTab(tab) {
+    return new Promise((resolve) => {
+      chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_DATA' }, (data) => {
+        if (chrome.runtime.lastError) {
+          console.warn('[LOS Sidebar] Tab query error:', chrome.runtime.lastError.message);
+          resolve(false);
+          return;
+        }
+        if (data && (data.profile?.name || data.job?.jobTitle)) {
+          currentPageType = data.pageType;
+          currentProfile = data.profile;
+          currentJob = data.job;
+          renderPageData();
+          console.log('[LOS Sidebar] Got data:', data.profile?.name || data.job?.jobTitle);
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    });
   }
 
   function renderPageData() {

@@ -1,0 +1,79 @@
+{
+"update_url": "https://clients2.google.com/service/update2/crx",
+
+  "version": "14.0.1",
+  "name": "Apollo.io: Free B2B Phone Number & Email Finder",
+  "short_name": "Apollo.io",
+  "manifest_version": 3,
+  "description": "Apollo enables users to find contact info, connect with buyers, track emails, and more for free.",
+  "action": {
+    "default_title": "Apollo"
+  },
+  "icons": {
+    "16": "img/icon-16.png",
+    "48": "img/icon-48.png",
+    "128": "img/icon-128.png"
+  },
+  "background": {
+    "service_worker": "serviceWorker.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.linkedin.com/*"],
+      "js": ["js/injectLINetwork.bundle.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": [
+    "contextMenus",
+    "notifications",
+    "scripting",
+    "storage",
+    "tabs",
+    "webNavigation",
+    "sidePanel"
+  ],
+  "host_permissions": ["*://*/*"],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "loading.html",
+        "panel.html",
+        "window.html",
+        "sidebar-main.html",
+        "linkedin-sidebar.html",
+        "salesforce-sidebar.html",
+        "salesforce-toolbar.html",
+        "apollo-everywhere-sidebar.html",
+        "gcal-sidebar.html",
+        "hubspot-sidebar.html",
+        "hubspot-toolbar.html",
+        "state-sync-iframe.html",
+        "side-panel.html",
+        "voice-window.html",
+        "microphone-access.html",
+        "empty-sidebar.html",
+        "img/*",
+        "fonts/*",
+        "js/*",
+        "js/*.js",
+        "json/*",
+        "js/css/*",
+        "*.css"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://www.apollo.io/*",
+      "https://beta.apollo.io/*",
+      "https://app.apollo.io/*",
+      "https://extension.apollo.io/*"
+    ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' http://localhost:8097 http://localhost:8098; object-src 'self'; connect-src https://o101058.ingest.sentry.io https://app.apollo.io https://www.apollo.io https://extension.apollo.io https://api.amplitude.com https://track.customer.io https://insights-collector.newrelic.com http://whatis.customeriomail.com/ wss://voice-js.roaming.twilio.com/signal https://sdk.twilio.com https://api2.amplitude.com/2/httpapi ws://localhost:8097 ws://localhost:8098 https://eventgw.us1.twilio.com/v4/EndpointEvent wss://ws-mt1.pusher.com https://ws-mt1.pusher.com https://sockjs-mt1.pusher.com wss://sockjs-mt1.pusher.com https://eventgw.us1.twilio.com/v4/EndpointEvents https://eventgw.us1.twilio.com/v4/EndpointMetrics https://assets.apollo.io https://www.apollo.io/amp-outbound2;"
+  }
+}

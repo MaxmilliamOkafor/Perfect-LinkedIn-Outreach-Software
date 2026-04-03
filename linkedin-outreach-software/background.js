@@ -146,8 +146,18 @@ async function openSidePanel(tab) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
     case 'OPEN_SIDEBAR':
-      if (sender.tab) openSidePanel(sender.tab);
-      sendResponse({ ok: true });
+      if (sender.tab) {
+        openSidePanel(sender.tab);
+        sendResponse({ ok: true });
+      } else {
+        // Called from popup — query the active LinkedIn tab
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          const tab = tabs.find(t => t.url && t.url.includes('linkedin.com'));
+          if (tab) openSidePanel(tab);
+          sendResponse({ ok: !!tab });
+        });
+        return true; // async sendResponse
+      }
       break;
 
     case 'PROFILE_DETECTED':

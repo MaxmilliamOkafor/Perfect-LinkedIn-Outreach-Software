@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "LinkedIn Outreach Software",
-  "short_name": "LI Outreach",
-  "description": "AI-powered LinkedIn outreach tool — find contact info, draft tailored messages, and manage leads with zero limitations.",
-  "version": "1.0.0",
+  "name": "LinkedIn Outreach Pro",
+  "short_name": "LI Outreach Pro",
+  "description": "AI-powered LinkedIn automation tool — unlimited campaigns, multi-step sequences, CRM pipeline, contact finder, and AI message drafting. Zero limitations.",
+  "version": "2.0.0",
   "minimum_chrome_version": "116",
 
   "icons": {
@@ -14,7 +14,7 @@
   },
 
   "action": {
-    "default_title": "LinkedIn Outreach",
+    "default_title": "LinkedIn Outreach Pro",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
@@ -38,7 +38,9 @@
     "storage",
     "sidePanel",
     "scripting",
-    "contextMenus"
+    "contextMenus",
+    "alarms",
+    "notifications"
   ],
 
   "host_permissions": [
@@ -48,7 +50,13 @@
   "content_scripts": [
     {
       "matches": ["https://*.linkedin.com/*"],
-      "js": ["lib/utils.js", "lib/profile-scraper.js", "lib/contact-finder.js", "content.js"],
+      "js": [
+        "lib/utils.js",
+        "lib/profile-scraper.js",
+        "lib/contact-finder.js",
+        "lib/linkedin-actions.js",
+        "content.js"
+      ],
       "css": ["content.css"],
       "run_at": "document_end"
     }

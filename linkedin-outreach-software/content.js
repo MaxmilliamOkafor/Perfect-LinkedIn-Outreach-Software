@@ -1,7 +1,7 @@
 /**
- * LinkedIn Outreach Software — Content Script
+ * LinkedIn Outreach Pro — Content Script
  * Injected on LinkedIn pages to detect profiles/jobs, add the outreach badge,
- * scrape contact data, and relay everything to the sidebar.
+ * scrape contact data, execute automation actions, and relay to the sidebar.
  */
 
 (function () {
@@ -23,7 +23,7 @@
   // ─── Init ─────────────────────────────────
 
   function init() {
-    console.log('[LOS] LinkedIn Outreach Software v1.0 initialized');
+    console.log('[LOS] LinkedIn Outreach Pro v2.0 initialized');
     processCurrentPage();
     observePageChanges();
   }
@@ -31,7 +31,6 @@
   // ─── Page Change Observer ─────────────────
 
   function observePageChanges() {
-    // Watch for URL changes (LinkedIn SPA)
     setInterval(() => {
       if (location.href !== lastUrl) {
         lastUrl = location.href;
@@ -40,7 +39,6 @@
       }
     }, 500);
 
-    // Also watch for DOM mutations (content loading after navigation)
     const observer = new MutationObserver(debounce(() => {
       const pageType = detectPageType();
       if (pageType === 'profile' && (!currentProfileData || !currentProfileData.name)) {
@@ -107,7 +105,6 @@
 
   async function handleProfilePage() {
     try {
-      // Wait for the profile name to load — try multiple selectors
       const nameSelectors = [
         'h1.text-heading-xlarge',
         '.pv-text-details__left-panel h1',
@@ -127,12 +124,10 @@
 
       if (!nameFound && retryCount < 5) {
         retryCount++;
-        console.log(`[LOS] Name not found, retry ${retryCount}/5 in 1s...`);
         setTimeout(() => handleProfilePage(), 1000);
         return;
       }
 
-      // Give LinkedIn a moment to finish rendering dynamic content
       await sleep(500);
 
       currentProfileData = ProfileScraper.extractProfile();
@@ -148,17 +143,14 @@
         return;
       }
 
-      // Find contact info
       const contacts = ContactFinder.findContacts(currentProfileData);
       currentProfileData.foundEmails = contacts.emails;
       currentProfileData.foundPhones = contacts.phones;
 
       console.log('[LOS] Found', contacts.emails.length, 'emails,', contacts.phones.length, 'phones');
 
-      // Show the outreach badge
       injectBadge('profile');
 
-      // Notify background / sidebar
       chrome.runtime.sendMessage({
         type: 'PROFILE_DETECTED',
         data: currentProfileData
@@ -232,6 +224,38 @@
 
   function handlePeopleSearch() {
     injectBadge('search');
+    // Add import button for search results
+    injectSearchImportButton();
+  }
+
+  // ─── Search Import Button ─────────────────
+
+  function injectSearchImportButton() {
+    if (document.getElementById('los-import-search-btn')) return;
+
+    const searchHeader = document.querySelector('.search-results-container');
+    if (!searchHeader) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'los-import-search-btn';
+    btn.className = 'los-search-import-btn';
+    btn.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Import to Outreach Pro</span>
+    `;
+    btn.addEventListener('click', () => {
+      const results = LinkedInActions.scrapeSearchResults();
+      chrome.runtime.sendMessage({
+        type: 'SEARCH_RESULTS_SCRAPED',
+        data: results
+      }).catch(() => {});
+
+      if (typeof LOS !== 'undefined' && LOS.Utils) {
+        LOS.Utils.showToast(`${results.length} profiles imported!`, 'success');
+      }
+    });
+
+    searchHeader.insertBefore(btn, searchHeader.firstChild);
   }
 
   // ─── Badge Injection ──────────────────────
@@ -248,7 +272,7 @@
     badgeElement.innerHTML = `
       <div class="los-badge-inner">
         <span class="los-badge-icon">${icon}</span>
-        <span class="los-badge-label">Outreach</span>
+        <span class="los-badge-label">Outreach Pro</span>
         <span class="los-badge-pulse"></span>
       </div>
     `;
@@ -315,7 +339,6 @@
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case 'GET_PAGE_DATA':
-        // If no data yet, try extracting now
         if (!currentProfileData && !currentJobData) {
           const pt = detectPageType();
           if (pt === 'profile') {
@@ -329,7 +352,6 @@
             currentJobData = ProfileScraper.extractJobListing();
           }
         }
-
         sendResponse({
           pageType: currentPageType || detectPageType(),
           profile: currentProfileData,
@@ -354,6 +376,23 @@
         }
         sendResponse(currentProfileData);
         break;
+
+      case 'SCRAPE_SEARCH_RESULTS':
+        const results = typeof LinkedInActions !== 'undefined'
+          ? LinkedInActions.scrapeSearchResults()
+          : ProfileScraper.extractSearchResults();
+        sendResponse(results);
+        break;
+
+      case 'EXECUTE_ACTION':
+        if (typeof LinkedInActions !== 'undefined') {
+          LinkedInActions.execute(message.action)
+            .then(result => sendResponse(result))
+            .catch(error => sendResponse({ success: false, error: error.message }));
+        } else {
+          sendResponse({ success: false, error: 'LinkedInActions not available' });
+        }
+        return true;
     }
     return true;
   });

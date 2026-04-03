@@ -1,5 +1,6 @@
 /**
- * LinkedIn Outreach Software — Popup Logic
+ * LinkedIn Outreach Pro — Popup Logic
+ * Quick stats dashboard with real-time data
  */
 
 (function () {
@@ -7,110 +8,99 @@
 
   async function init() {
     await loadStats();
-    await checkAIStatus();
-    checkIfLinkedIn();
     setupListeners();
   }
 
   async function loadStats() {
-    chrome.runtime.sendMessage({ type: 'GET_STATS' }, (stats) => {
-      if (stats) {
-        document.getElementById('stat-leads').textContent = stats.leadsSaved || 0;
-        document.getElementById('stat-messages').textContent = stats.messagesDrafted || 0;
-      }
-    });
+    try {
+      // Leads count
+      const leads = await send('GET_LEADS') || [];
+      setText('#popup-leads', leads.length);
 
-    chrome.runtime.sendMessage({ type: 'GET_LEADS' }, (leads) => {
-      if (leads) {
-        document.getElementById('stat-leads').textContent = leads.length || 0;
-      }
-    });
-  }
+      // Active campaigns
+      const campaigns = await send('GET_CAMPAIGNS') || [];
+      const active = campaigns.filter(c => c.status === 'active');
+      setText('#popup-campaigns', active.length);
 
-  async function checkAIStatus() {
-    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }, (settings) => {
-      const statusEl = document.getElementById('ai-status');
-      const statusText = document.getElementById('ai-status-text');
-      const setupBtn = document.getElementById('btn-setup-ai');
+      // Total sent
+      const totalSent = campaigns.reduce((s, c) => s + (c.stats?.sent || 0), 0);
+      setText('#popup-sent', totalSent);
 
-      if (settings && settings.openaiApiKey) {
-        statusText.textContent = `AI Ready — ${settings.aiModel || 'gpt-4o-mini'}`;
-        setupBtn.textContent = 'Change';
+      // Response rate
+      const totalReplied = campaigns.reduce((s, c) => s + (c.stats?.replied || 0), 0);
+      const rate = totalSent > 0 ? Math.round((totalReplied / totalSent) * 100) : 0;
+      setText('#popup-rate', rate + '%');
+
+      // Automation status
+      const autoStatus = await send('GET_AUTO_STATUS');
+      const dot = document.getElementById('popup-auto-dot');
+      const label = document.getElementById('popup-auto-label');
+
+      if (autoStatus?.isRunning && !autoStatus?.isPaused) {
+        dot.className = 'popup-auto-dot running';
+        label.textContent = `Automation: Running (${autoStatus.queueLength} in queue)`;
+      } else if (autoStatus?.isPaused) {
+        dot.className = 'popup-auto-dot paused';
+        label.textContent = 'Automation: Paused';
       } else {
-        statusEl.classList.add('no-key');
-        statusText.textContent = 'No API key — using templates';
-        setupBtn.textContent = 'Add Key';
+        dot.className = 'popup-auto-dot';
+        label.textContent = 'Automation: Idle';
       }
-    });
-  }
 
-  function checkIfLinkedIn() {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tab = tabs[0];
-      if (!tab || !tab.url || !tab.url.includes('linkedin.com')) {
-        document.getElementById('not-linkedin').style.display = 'block';
-      }
-    });
+      // Daily counters
+      const counters = await send('GET_DAILY_COUNTERS') || {};
+      setText('#popup-conn-today', counters.connectionsPerDay || 0);
+      setText('#popup-msg-today', counters.messagesPerDay || 0);
+      setText('#popup-visit-today', counters.profileVisitsPerDay || 0);
+
+    } catch (e) {
+      console.warn('[Popup] Load error:', e);
+    }
   }
 
   function setupListeners() {
-    // Open sidebar
-    document.getElementById('btn-open-sidebar').addEventListener('click', () => {
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          chrome.sidePanel.open({ tabId: tabs[0].id }).then(() => {
-            chrome.sidePanel.setOptions({
-              tabId: tabs[0].id,
-              path: 'sidebar.html',
-              enabled: true
-            });
-          }).catch(console.warn);
-          window.close();
-        }
-      });
-    });
-
-    // Export
-    document.getElementById('btn-export').addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'EXPORT_CSV' }, (result) => {
-        if (!result || !result.csv) {
-          alert('No leads to export');
-          return;
-        }
-        const blob = new Blob([result.csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `linkedin_leads_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-      });
-    });
-
-    // Setup AI
-    document.getElementById('btn-setup-ai').addEventListener('click', () => {
-      const key = prompt('Enter your OpenAI API Key (stored locally only):');
-      if (key && key.trim()) {
-        chrome.runtime.sendMessage({
-          type: 'UPDATE_SETTINGS',
-          data: { openaiApiKey: key.trim() }
-        }, () => {
-          checkAIStatus();
-        });
+    document.getElementById('btn-open-sidebar')?.addEventListener('click', async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.url?.includes('linkedin.com')) {
+        chrome.runtime.sendMessage({ type: 'OPEN_SIDEBAR' });
+        window.close();
+      } else {
+        // Navigate to LinkedIn first
+        chrome.tabs.create({ url: 'https://www.linkedin.com/feed/' });
+        window.close();
       }
     });
 
-    // Settings
-    document.getElementById('btn-popup-settings').addEventListener('click', (e) => {
-      e.preventDefault();
-      // Open sidebar with settings
-      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-        if (tabs[0]) {
-          chrome.sidePanel.open({ tabId: tabs[0].id }).catch(console.warn);
-          window.close();
-        }
+    document.getElementById('btn-quick-save')?.addEventListener('click', async () => {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.url?.includes('linkedin.com')) {
+        chrome.tabs.sendMessage(tab.id, { type: 'EXTRACT_PROFILE' }, (profile) => {
+          if (profile && profile.name) {
+            chrome.runtime.sendMessage({ type: 'SAVE_LEAD', data: profile }, () => {
+              const btn = document.getElementById('btn-quick-save');
+              btn.textContent = '✓ Saved!';
+              btn.style.color = '#00e676';
+              btn.style.borderColor = 'rgba(0, 230, 118, 0.3)';
+              setTimeout(() => loadStats(), 500);
+            });
+          }
+        });
+      }
+    });
+  }
+
+  function send(type, data) {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({ type, data }, response => {
+        if (chrome.runtime.lastError) resolve(null);
+        else resolve(response);
       });
     });
+  }
+
+  function setText(selector, value) {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = value;
   }
 
   init();

@@ -1,7 +1,16 @@
 /**
- * LinkedIn Outreach Software — Background Service Worker
- * Handles sidebar management, AI API calls, context menus, and message routing.
+ * LinkedIn Outreach Pro — Background Service Worker
+ * Handles sidebar management, AI API calls, context menus, automation engine,
+ * campaign management, CRM, and message routing.
  */
+
+// ─── Import Modules ─────────────────────────
+importScripts(
+  'lib/automation-engine.js',
+  'lib/sequence-runner.js',
+  'lib/crm-manager.js',
+  'lib/campaign-manager.js'
+);
 
 // ─── Side Panel Setup ────────────────────────
 
@@ -45,7 +54,55 @@ chrome.runtime.onInstalled.addListener(() => {
       });
     }
   });
+
+  // Initialize CRM
+  CRMManager.init();
 });
+
+// ─── Alarms for Automation ──────────────────
+
+chrome.alarms.create('los-daily-reset', {
+  periodInMinutes: 60 // Check every hour
+});
+
+chrome.alarms.create('los-sequence-check', {
+  periodInMinutes: 5 // Check sequences every 5 min
+});
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'los-daily-reset') {
+    // Reset daily counters at midnight
+    const counters = await new Promise(r => chrome.storage.local.get('los_daily_counters', r2 => r(r2.los_daily_counters || {})));
+    const today = new Date().toISOString().split('T')[0];
+    if (counters.date !== today) {
+      chrome.storage.local.set({ los_daily_counters: { date: today } });
+    }
+  }
+
+  if (alarm.name === 'los-sequence-check') {
+    // Check for scheduled sequence actions
+    await processScheduledActions();
+  }
+});
+
+async function processScheduledActions() {
+  try {
+    const campaigns = await CampaignManager.getCampaigns();
+    const activeCampaigns = campaigns.filter(c => c.status === 'active');
+
+    for (const campaign of activeCampaigns) {
+      if (!campaign.sequence) continue;
+
+      const actions = await SequenceRunner.scheduleSequenceActions(campaign.sequence, campaign.id);
+      if (actions.length > 0) {
+        await AutomationEngine.enqueueBatch(actions);
+        await CampaignManager.updateCampaign(campaign.id, campaign);
+      }
+    }
+  } catch (e) {
+    console.warn('[LOS] Sequence check error:', e);
+  }
+}
 
 // ─── Context Menu Handlers ──────────────────
 
@@ -81,7 +138,6 @@ async function openSidePanel(tab) {
     });
   } catch (e) {
     console.warn('[LOS] Side panel error:', e);
-    // Fallback: use popup
   }
 }
 
@@ -90,22 +146,19 @@ async function openSidePanel(tab) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   switch (message.type) {
     case 'OPEN_SIDEBAR':
-      if (sender.tab) {
-        openSidePanel(sender.tab);
-      }
+      if (sender.tab) openSidePanel(sender.tab);
       sendResponse({ ok: true });
       break;
 
     case 'PROFILE_DETECTED':
     case 'JOB_DETECTED':
       // Forward to sidebar if open
-      broadcastToSidebar(message);
       sendResponse({ ok: true });
       break;
 
     case 'AI_DRAFT':
       handleAIDraft(message.data).then(sendResponse);
-      return true; // Async response
+      return true;
 
     case 'SAVE_LEAD':
       saveLead(message.data).then(sendResponse);
@@ -148,17 +201,147 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return true;
 
     case 'GET_PAGE_DATA':
-      // Forward to content script
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
         if (tabs[0]) {
           chrome.tabs.sendMessage(tabs[0].id, { type: 'GET_PAGE_DATA' }, sendResponse);
+        } else {
+          sendResponse(null);
         }
       });
+      return true;
+
+    // ─── Campaign Messages ──────────────────
+    case 'GET_CAMPAIGNS':
+      CampaignManager.getCampaigns().then(sendResponse);
+      return true;
+
+    case 'CREATE_CAMPAIGN':
+      CampaignManager.createCampaign(message.data).then(sendResponse);
+      return true;
+
+    case 'START_CAMPAIGN':
+      CampaignManager.startCampaign(message.data.id).then(sendResponse).catch(e => {
+        console.error('[LOS] Start campaign error:', e);
+        sendResponse({ error: e.message });
+      });
+      return true;
+
+    case 'PAUSE_CAMPAIGN':
+      CampaignManager.pauseCampaign(message.data.id).then(sendResponse);
+      return true;
+
+    case 'RESUME_CAMPAIGN':
+      CampaignManager.resumeCampaign(message.data.id).then(sendResponse);
+      return true;
+
+    case 'DELETE_CAMPAIGN':
+      CampaignManager.deleteCampaign(message.data.id).then(() => sendResponse({ ok: true }));
+      return true;
+
+    // ─── CRM Messages ───────────────────────
+    case 'GET_PIPELINE_OVERVIEW':
+      CRMManager.getPipelineOverview().then(sendResponse);
+      return true;
+
+    case 'MOVE_TO_STAGE':
+      CRMManager.moveToStage(message.data.leadId, message.data.stageId).then(sendResponse);
+      return true;
+
+    case 'GET_LEAD_CRM_DATA':
+      CRMManager.getLeadCRMData(message.data.leadId).then(sendResponse);
+      return true;
+
+    case 'GET_ALL_CRM_DATA':
+      (async () => {
+        const d = await new Promise(r => chrome.storage.local.get('los_crm_data', r2 => r(r2.los_crm_data || {})));
+        sendResponse(d);
+      })();
+      return true;
+
+    case 'ADD_NOTE':
+      CRMManager.addNote(message.data.leadId, message.data.note).then(sendResponse);
+      return true;
+
+    case 'ADD_TAG':
+      CRMManager.addTag(message.data.leadId, message.data.tag).then(sendResponse);
+      return true;
+
+    case 'GET_RECENT_ACTIVITIES':
+      CRMManager.getRecentActivities(message.data?.limit || 50).then(sendResponse);
+      return true;
+
+    // ─── Automation Messages ────────────────
+    case 'GET_AUTO_STATUS':
+      sendResponse(AutomationEngine.getStatus());
+      break;
+
+    case 'START_AUTOMATION':
+      AutomationEngine.start().then(() => sendResponse({ ok: true }));
+      return true;
+
+    case 'PAUSE_AUTOMATION':
+      AutomationEngine.pause();
+      sendResponse({ ok: true });
+      break;
+
+    case 'STOP_AUTOMATION':
+      AutomationEngine.stop();
+      sendResponse({ ok: true });
+      break;
+
+    case 'GET_DAILY_COUNTERS':
+      sendResponse(AutomationEngine.getDailyCounters());
+      break;
+
+    case 'GET_AUTOMATION_LIMITS':
+      AutomationEngine._getLimits().then(sendResponse);
+      return true;
+
+    case 'UPDATE_AUTOMATION_LIMITS':
+      AutomationEngine.updateLimits(message.data).then(sendResponse);
       return true;
 
     default:
       break;
   }
+});
+
+// ─── Initialize Automation Engine ───────────
+
+AutomationEngine.init();
+
+// Listen for automation events
+AutomationEngine.on('action_completed', async (action) => {
+  // Advance the lead in the sequence
+  if (action.sequenceId && action.campaignId) {
+    try {
+      const campaign = await CampaignManager.getCampaign(action.campaignId);
+      if (campaign && campaign.sequence) {
+        SequenceRunner.advanceLead(campaign.sequence, action.leadId);
+        await CampaignManager.updateCampaign(action.campaignId, campaign);
+        await CampaignManager.updateCampaignStats(action.campaignId);
+      }
+    } catch (e) {
+      console.warn('[LOS] Sequence advance error:', e);
+    }
+  }
+
+  // Log to CRM
+  CRMManager.logAction(action.leadId, action.type, {
+    campaignId: action.campaignId,
+    sequenceId: action.sequenceId
+  });
+});
+
+AutomationEngine.on('action_failed', (action) => {
+  console.error('[LOS] Action failed:', action.type, action.error);
+  // Show notification
+  chrome.notifications.create({
+    type: 'basic',
+    iconUrl: 'icons/icon128.png',
+    title: 'Action Failed',
+    message: `${action.type} failed: ${action.error}`
+  });
 });
 
 // ─── AI Drafting ────────────────────────────
@@ -167,7 +350,6 @@ async function handleAIDraft(data) {
   const settings = await getSettings();
 
   if (!settings.openaiApiKey) {
-    // Use template fallback
     return templateFallback(data.variables);
   }
 
@@ -212,7 +394,6 @@ Rules:
 
     const result = await response.json();
     const msg = result.choices?.[0]?.message?.content?.trim();
-
     return { success: true, message: msg, source: 'ai', model: settings.aiModel };
 
   } catch (error) {
@@ -235,7 +416,6 @@ function templateFallback(vars) {
   } else {
     message = `Hi ${firstName},\n\nI noticed your impressive work at ${company}. ${userTitle ? `I'm ${userName}, ${userTitle}.` : ''}\n\nI'd love to connect and explore potential synergies. Would you be open to a quick chat?\n\nBest,\n${userName}`;
   }
-
   return { success: true, message, source: 'template' };
 }
 
@@ -243,9 +423,7 @@ function templateFallback(vars) {
 
 async function getSettings() {
   return new Promise(resolve => {
-    chrome.storage.local.get('los_settings', r => {
-      resolve(r.los_settings || {});
-    });
+    chrome.storage.local.get('los_settings', r => resolve(r.los_settings || {}));
   });
 }
 
@@ -313,9 +491,7 @@ async function getStats() {
 
 async function getTemplates() {
   return new Promise(resolve => {
-    chrome.storage.local.get('los_templates', r => {
-      resolve(r.los_templates || []);
-    });
+    chrome.storage.local.get('los_templates', r => resolve(r.los_templates || []));
   });
 }
 
@@ -344,11 +520,6 @@ async function exportCSV() {
 
   const csv = [headers.join(','), ...rows.map(r => r.map(c => `"${c}"`).join(','))].join('\n');
   return { csv };
-}
-
-function broadcastToSidebar(message) {
-  // The sidebar listens via chrome.runtime.onMessage
-  // It will receive the same messages broadcast through the runtime
 }
 
 // ─── Global Error Handler ───────────────────

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LinkedIn Outreach</title>
+  <title>LinkedIn Outreach Pro</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -16,8 +16,8 @@
       <div class="logo-group">
         <div class="logo-icon">🚀</div>
         <div class="logo-text">
-          <h1>Outreach</h1>
-          <span class="logo-badge" id="ai-badge">AI Powered</span>
+          <h1>Outreach Pro</h1>
+          <span class="logo-badge" id="ai-badge">UNLIMITED</span>
         </div>
       </div>
       <div class="header-actions">
@@ -30,36 +30,135 @@
       </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="sidebar-tabs">
-      <button class="tab active" data-tab="contact" id="tab-contact">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        Contact
+    <!-- Navigation Tabs — Waalaxy Style -->
+    <nav class="sidebar-tabs" id="sidebar-tabs">
+      <button class="tab active" data-tab="dashboard" id="tab-dashboard" title="Dashboard">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <span class="tab-label">Dashboard</span>
       </button>
-      <button class="tab" data-tab="outreach" id="tab-outreach">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
-        Outreach
+      <button class="tab" data-tab="campaigns" id="tab-campaigns" title="Campaigns">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        <span class="tab-label">Campaigns</span>
       </button>
-      <button class="tab" data-tab="leads" id="tab-leads">
+      <button class="tab" data-tab="pipeline" id="tab-pipeline" title="Pipeline">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span class="tab-label">Pipeline</span>
+      </button>
+      <button class="tab" data-tab="contacts" id="tab-contacts" title="Contacts">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-        Leads
+        <span class="tab-label">Contacts</span>
+      </button>
+      <button class="tab" data-tab="outreach" id="tab-outreach" title="AI Outreach">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+        <span class="tab-label">Outreach</span>
       </button>
     </nav>
 
     <!-- Tab Content -->
     <main class="sidebar-content">
       
-      <!-- ═══ CONTACT TAB ═══ -->
-      <section class="tab-panel active" id="panel-contact">
-        
-        <!-- Empty State -->
-        <div class="empty-state" id="contact-empty">
-          <div class="empty-icon">👤</div>
-          <h3>No Profile Detected</h3>
-          <p>Navigate to a LinkedIn profile or job listing to see contact information.</p>
+      <!-- ═══ DASHBOARD TAB ═══ -->
+      <section class="tab-panel active" id="panel-dashboard">
+        <!-- Quick Stats -->
+        <div class="dashboard-stats" id="dashboard-stats">
+          <div class="stat-card accent">
+            <div class="stat-card-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              <span class="stat-trend" id="stat-trend-leads">—</span>
+            </div>
+            <span class="stat-value" id="dash-leads">0</span>
+            <span class="stat-label">Total Leads</span>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-card-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+              <span class="stat-trend" id="stat-trend-campaigns">—</span>
+            </div>
+            <span class="stat-value" id="dash-campaigns">0</span>
+            <span class="stat-label">Active Campaigns</span>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-card-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
+              <span class="stat-trend" id="stat-trend-sent">—</span>
+            </div>
+            <span class="stat-value" id="dash-sent">0</span>
+            <span class="stat-label">Messages Sent</span>
+          </div>
+          <div class="stat-card amber">
+            <div class="stat-card-header">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+              <span class="stat-trend" id="stat-trend-rate">—</span>
+            </div>
+            <span class="stat-value" id="dash-rate">0%</span>
+            <span class="stat-label">Response Rate</span>
+          </div>
         </div>
 
-        <!-- Profile Card -->
+        <!-- Daily Activity -->
+        <div class="dash-section">
+          <h3 class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Today's Activity
+          </h3>
+          <div class="daily-counters" id="daily-counters">
+            <div class="counter-item">
+              <span class="counter-label">Connections</span>
+              <div class="counter-bar">
+                <div class="counter-fill" id="counter-connections" style="width: 0%"></div>
+              </div>
+              <span class="counter-value" id="counter-connections-val">0/50</span>
+            </div>
+            <div class="counter-item">
+              <span class="counter-label">Messages</span>
+              <div class="counter-bar">
+                <div class="counter-fill purple" id="counter-messages" style="width: 0%"></div>
+              </div>
+              <span class="counter-value" id="counter-messages-val">0/100</span>
+            </div>
+            <div class="counter-item">
+              <span class="counter-label">Profile Views</span>
+              <div class="counter-bar">
+                <div class="counter-fill green" id="counter-visits" style="width: 0%"></div>
+              </div>
+              <span class="counter-value" id="counter-visits-val">0/150</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Automation Status -->
+        <div class="dash-section">
+          <h3 class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Automation Status
+          </h3>
+          <div class="auto-status-card" id="auto-status">
+            <div class="auto-status-indicator" id="auto-status-dot"></div>
+            <div class="auto-status-info">
+              <span class="auto-status-label" id="auto-status-label">Idle</span>
+              <span class="auto-status-detail" id="auto-status-detail">No active automations</span>
+            </div>
+            <button class="btn-auto-toggle" id="btn-auto-toggle" title="Start/Stop automation">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="dash-section">
+          <h3 class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Recent Activity
+          </h3>
+          <div class="activity-feed" id="activity-feed">
+            <div class="empty-state small">
+              <span class="empty-icon">📊</span>
+              <p>No activity yet. Start a campaign to see updates here.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Current Profile Card (shown when on a profile) -->
         <div class="profile-card" id="profile-card" style="display:none;">
           <div class="profile-header">
             <div class="profile-avatar" id="profile-avatar">
@@ -72,7 +171,6 @@
               <p class="profile-location" id="profile-location">—</p>
             </div>
           </div>
-
           <div class="profile-actions">
             <button class="btn-primary" id="btn-save-lead">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -82,10 +180,13 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><path d="M22 2L15 22L11 13L2 9L22 2Z"/></svg>
               Draft
             </button>
+            <button class="btn-secondary" id="btn-add-to-campaign" title="Add to campaign">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </button>
           </div>
         </div>
 
-        <!-- Contact Info -->
+        <!-- Contact Info Sections -->
         <div class="contact-section" id="contact-section" style="display:none;">
           <h3 class="section-title">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -129,9 +230,201 @@
         </div>
       </section>
 
+      <!-- ═══ CAMPAIGNS TAB ═══ -->
+      <section class="tab-panel" id="panel-campaigns">
+        <div class="campaigns-header">
+          <h3 class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            Campaigns
+          </h3>
+          <button class="btn-primary btn-sm" id="btn-new-campaign">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Campaign
+          </button>
+        </div>
+
+        <!-- Campaign List -->
+        <div class="campaign-list" id="campaign-list">
+          <div class="empty-state" id="campaigns-empty">
+            <div class="empty-icon">🚀</div>
+            <h3>No Campaigns Yet</h3>
+            <p>Create your first automation campaign to start reaching out at scale.</p>
+            <button class="btn-primary" id="btn-create-first-campaign">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Create Campaign
+            </button>
+          </div>
+        </div>
+
+        <!-- Campaign Creator (overlay) -->
+        <div class="campaign-creator" id="campaign-creator" style="display:none;">
+          <div class="creator-header">
+            <h3>New Campaign</h3>
+            <button class="btn-icon" id="btn-close-creator">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div class="creator-body">
+            <div class="creator-step" id="creator-step-1">
+              <div class="step-indicator">
+                <span class="step-dot active">1</span>
+                <span class="step-line"></span>
+                <span class="step-dot">2</span>
+                <span class="step-line"></span>
+                <span class="step-dot">3</span>
+              </div>
+              <h4>Campaign Details</h4>
+              <div class="form-group">
+                <label>Campaign Name</label>
+                <input type="text" id="campaign-name" class="form-input" placeholder="e.g. Q2 Outreach — Product Managers">
+              </div>
+              <div class="form-group">
+                <label>Description (optional)</label>
+                <textarea id="campaign-desc" class="form-textarea" placeholder="What's this campaign about?" rows="2"></textarea>
+              </div>
+              <button class="btn-primary btn-full" id="btn-creator-next-1">
+                Continue
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              </button>
+            </div>
+
+            <div class="creator-step" id="creator-step-2" style="display:none;">
+              <div class="step-indicator">
+                <span class="step-dot done">✓</span>
+                <span class="step-line done"></span>
+                <span class="step-dot active">2</span>
+                <span class="step-line"></span>
+                <span class="step-dot">3</span>
+              </div>
+              <h4>Choose Sequence</h4>
+              <div class="sequence-templates" id="sequence-templates"></div>
+              <div class="form-group">
+                <label>Connection Note (optional, max 300 chars)</label>
+                <textarea id="campaign-conn-note" class="form-textarea" placeholder="Hi {firstName}, I noticed your work at {company}..." rows="3" maxlength="300"></textarea>
+                <span class="char-count" id="conn-note-count">0/300</span>
+              </div>
+              <div class="creator-nav">
+                <button class="btn-secondary" id="btn-creator-back-2">Back</button>
+                <button class="btn-primary" id="btn-creator-next-2">Continue</button>
+              </div>
+            </div>
+
+            <div class="creator-step" id="creator-step-3" style="display:none;">
+              <div class="step-indicator">
+                <span class="step-dot done">✓</span>
+                <span class="step-line done"></span>
+                <span class="step-dot done">✓</span>
+                <span class="step-line done"></span>
+                <span class="step-dot active">3</span>
+              </div>
+              <h4>Add Leads</h4>
+              <div class="lead-source-options">
+                <button class="lead-source-btn active" data-source="saved" id="btn-source-saved">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                  Saved Leads
+                </button>
+                <button class="lead-source-btn" data-source="csv" id="btn-source-csv">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                  Import CSV
+                </button>
+                <button class="lead-source-btn" data-source="search" id="btn-source-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                  From Search
+                </button>
+              </div>
+
+              <!-- Saved Leads Selection -->
+              <div class="lead-source-panel" id="source-saved">
+                <div class="lead-select-all">
+                  <label><input type="checkbox" id="select-all-leads"> Select all</label>
+                  <span class="selected-count" id="selected-count">0 selected</span>
+                </div>
+                <div class="lead-select-list" id="lead-select-list"></div>
+              </div>
+
+              <!-- CSV Import -->
+              <div class="lead-source-panel" id="source-csv" style="display:none;">
+                <div class="csv-drop-zone" id="csv-drop-zone">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  <p>Drop CSV file here or <label for="csv-file-input" class="csv-browse">browse</label></p>
+                  <input type="file" id="csv-file-input" accept=".csv" hidden>
+                </div>
+                <div class="csv-preview" id="csv-preview" style="display:none;">
+                  <span id="csv-preview-text">0 leads found</span>
+                </div>
+              </div>
+
+              <!-- Search Import -->
+              <div class="lead-source-panel" id="source-search" style="display:none;">
+                <p class="search-hint">Navigate to a LinkedIn search results page, then click "Import from page" to import visible results.</p>
+                <button class="btn-secondary btn-full" id="btn-import-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Import from Current Page
+                </button>
+              </div>
+
+              <div class="creator-nav">
+                <button class="btn-secondary" id="btn-creator-back-3">Back</button>
+                <button class="btn-primary btn-launch" id="btn-launch-campaign">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  Launch Campaign
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ PIPELINE TAB ═══ -->
+      <section class="tab-panel" id="panel-pipeline">
+        <div class="pipeline-header">
+          <h3 class="section-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/></svg>
+            CRM Pipeline
+          </h3>
+        </div>
+
+        <div class="pipeline-stages" id="pipeline-stages">
+          <!-- Populated by JS -->
+        </div>
+      </section>
+
+      <!-- ═══ CONTACTS TAB ═══ -->
+      <section class="tab-panel" id="panel-contacts">
+        <div class="leads-header">
+          <h3 class="section-title">Contacts</h3>
+          <div class="leads-actions">
+            <span class="lead-count" id="lead-count">0 contacts</span>
+            <button class="btn-export" id="btn-export" title="Export CSV">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export
+            </button>
+          </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="contacts-filters">
+          <input type="text" id="leads-search-input" placeholder="Search contacts..." class="search-input">
+          <div class="filter-chips" id="filter-chips">
+            <button class="filter-chip active" data-filter="all">All</button>
+            <button class="filter-chip" data-filter="new">New</button>
+            <button class="filter-chip" data-filter="contacted">Contacted</button>
+            <button class="filter-chip" data-filter="connected">Connected</button>
+            <button class="filter-chip" data-filter="replied">Replied</button>
+          </div>
+        </div>
+        
+        <div class="leads-list" id="leads-list">
+          <div class="empty-state" id="leads-empty">
+            <div class="empty-icon">📋</div>
+            <h3>No Contacts Yet</h3>
+            <p>Save contacts from LinkedIn profiles to build your outreach list.</p>
+          </div>
+        </div>
+      </section>
+
       <!-- ═══ OUTREACH TAB ═══ -->
       <section class="tab-panel" id="panel-outreach">
-        
         <!-- Template Selector -->
         <div class="template-selector" id="template-selector">
           <h3 class="section-title">Message Type</h3>
@@ -185,32 +478,6 @@
         </div>
       </section>
 
-      <!-- ═══ LEADS TAB ═══ -->
-      <section class="tab-panel" id="panel-leads">
-        <div class="leads-header">
-          <h3 class="section-title">Saved Leads</h3>
-          <div class="leads-actions">
-            <span class="lead-count" id="lead-count">0 leads</span>
-            <button class="btn-export" id="btn-export" title="Export CSV">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export
-            </button>
-          </div>
-        </div>
-        
-        <div class="leads-search">
-          <input type="text" id="leads-search-input" placeholder="Search leads..." class="search-input">
-        </div>
-
-        <div class="leads-list" id="leads-list">
-          <div class="empty-state" id="leads-empty">
-            <div class="empty-icon">📋</div>
-            <h3>No Leads Yet</h3>
-            <p>Save contacts from LinkedIn profiles to build your outreach list.</p>
-          </div>
-        </div>
-      </section>
-
     </main>
 
     <!-- Settings Panel (overlay) -->
@@ -255,6 +522,31 @@
             <input type="text" id="setting-company" class="setting-input" placeholder="Your company">
             <input type="email" id="setting-email" class="setting-input" placeholder="Your email">
           </div>
+          <hr class="setting-divider">
+          <div class="setting-group">
+            <label class="setting-label">⚡ Automation Safety Limits</label>
+            <span class="setting-hint">These are YOUR safety controls — adjust as needed. No hard limits.</span>
+            <div class="limit-row">
+              <label>Connections/day</label>
+              <input type="number" id="setting-limit-connections" class="setting-input-sm" value="50" min="1" max="500">
+            </div>
+            <div class="limit-row">
+              <label>Messages/day</label>
+              <input type="number" id="setting-limit-messages" class="setting-input-sm" value="100" min="1" max="500">
+            </div>
+            <div class="limit-row">
+              <label>Profile visits/day</label>
+              <input type="number" id="setting-limit-visits" class="setting-input-sm" value="150" min="1" max="500">
+            </div>
+            <div class="limit-row">
+              <label>Min delay (seconds)</label>
+              <input type="number" id="setting-delay-min" class="setting-input-sm" value="3" min="1" max="30">
+            </div>
+            <div class="limit-row">
+              <label>Max delay (seconds)</label>
+              <input type="number" id="setting-delay-max" class="setting-input-sm" value="8" min="2" max="60">
+            </div>
+          </div>
           <button class="btn-primary btn-save-settings" id="btn-save-settings">Save Settings</button>
         </div>
       </div>
@@ -262,6 +554,10 @@
 
   </div>
 
+  <script src="lib/automation-engine.js"></script>
+  <script src="lib/sequence-runner.js"></script>
+  <script src="lib/crm-manager.js"></script>
+  <script src="lib/campaign-manager.js"></script>
   <script src="sidebar.js"></script>
 </body>
 </html>
